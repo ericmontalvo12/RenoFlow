@@ -18,18 +18,34 @@ interface Props {
 }
 
 export function CreateUnitDialog({ open, onOpenChange, buildings }: Props) {
-  const router  = useRouter()
-  const [error, setError]   = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
+  const router    = useRouter()
+  const [error,      setError]      = useState<string | null>(null)
+  const [loading,    setLoading]    = useState(false)
   const [buildingId, setBuildingId] = useState('')
+
+  function handleClose() {
+    onOpenChange(false)
+    setBuildingId('')
+    setError(null)
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    if (!buildingId) {
+      setError('Please select a building.')
+      return
+    }
     setLoading(true)
     setError(null)
 
-    const formData = new FormData(e.currentTarget)
-    if (buildingId) formData.set('building_id', buildingId)
+    // Build FormData manually so Radix Select value is included reliably
+    const raw = new FormData(e.currentTarget)
+    const formData = new FormData()
+    formData.set('building_id',            buildingId)
+    formData.set('unit_number',            raw.get('unit_number') as string)
+    formData.set('floor_plan',             raw.get('floor_plan') as string)
+    formData.set('target_completion_date', raw.get('target_completion_date') as string)
+    formData.set('notes',                  raw.get('notes') as string)
 
     const result = await createUnit(formData)
 
@@ -37,15 +53,14 @@ export function CreateUnitDialog({ open, onOpenChange, buildings }: Props) {
       setError(result.error)
       setLoading(false)
     } else {
-      onOpenChange(false)
+      handleClose()
       setLoading(false)
-      setBuildingId('')
       router.refresh()
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Add Unit</DialogTitle>
@@ -53,7 +68,7 @@ export function CreateUnitDialog({ open, onOpenChange, buildings }: Props) {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
             <Label>Building</Label>
-            <Select value={buildingId} onValueChange={setBuildingId} required>
+            <Select value={buildingId} onValueChange={setBuildingId}>
               <SelectTrigger>
                 <SelectValue placeholder="Select building..." />
               </SelectTrigger>
@@ -80,8 +95,8 @@ export function CreateUnitDialog({ open, onOpenChange, buildings }: Props) {
             <p className="text-xs text-destructive bg-destructive/10 rounded px-3 py-2">{error}</p>
           )}
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" disabled={loading || !buildingId}>
+            <Button type="button" variant="outline" onClick={handleClose}>Cancel</Button>
+            <Button type="submit" disabled={loading}>
               {loading ? 'Creating...' : 'Create Unit'}
             </Button>
           </DialogFooter>
