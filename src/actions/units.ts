@@ -20,14 +20,14 @@ const updateUnitSchema = z.object({
   notes:                  z.string().optional(),
 })
 
-export async function createUnit(formData: FormData) {
-  const parsed = createUnitSchema.safeParse({
-    building_id:            formData.get('building_id'),
-    unit_number:            formData.get('unit_number'),
-    floor_plan:             formData.get('floor_plan') || undefined,
-    target_completion_date: formData.get('target_completion_date') || undefined,
-    notes:                  formData.get('notes') || undefined,
-  })
+export async function createUnit(data: {
+  building_id:            string
+  unit_number:            string
+  floor_plan?:            string
+  target_completion_date?: string
+  notes?:                 string
+}) {
+  const parsed = createUnitSchema.safeParse(data)
 
   if (!parsed.success) {
     return { error: parsed.error.issues[0].message }

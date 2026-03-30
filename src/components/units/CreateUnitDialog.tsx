@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createUnit } from '@/actions/units'
 import type { Building } from '@/types/database'
@@ -18,7 +18,9 @@ interface Props {
 }
 
 export function CreateUnitDialog({ open, onOpenChange, buildings }: Props) {
-  const router    = useRouter()
+  const router = useRouter()
+  const formRef = useRef<HTMLFormElement>(null)
+
   const [error,      setError]      = useState<string | null>(null)
   const [loading,    setLoading]    = useState(false)
   const [buildingId, setBuildingId] = useState('')
@@ -27,27 +29,38 @@ export function CreateUnitDialog({ open, onOpenChange, buildings }: Props) {
     onOpenChange(false)
     setBuildingId('')
     setError(null)
+    formRef.current?.reset()
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
+
     if (!buildingId) {
       setError('Please select a building.')
       return
     }
+
+    const form = e.currentTarget
+    const unitNumber  = (form.elements.namedItem('unit_number')  as HTMLInputElement).value.trim()
+    const floorPlan   = (form.elements.namedItem('floor_plan')   as HTMLInputElement).value.trim()
+    const targetDate  = (form.elements.namedItem('target_completion_date') as HTMLInputElement).value
+    const notes       = (form.elements.namedItem('notes') as HTMLInputElement | null)?.value.trim()
+
+    if (!unitNumber) {
+      setError('Unit number is required.')
+      return
+    }
+
     setLoading(true)
     setError(null)
 
-    // Build FormData manually so Radix Select value is included reliably
-    const raw = new FormData(e.currentTarget)
-    const formData = new FormData()
-    formData.set('building_id',            buildingId)
-    formData.set('unit_number',            raw.get('unit_number') as string)
-    formData.set('floor_plan',             raw.get('floor_plan') as string)
-    formData.set('target_completion_date', raw.get('target_completion_date') as string)
-    formData.set('notes',                  raw.get('notes') as string)
-
-    const result = await createUnit(formData)
+    const result = await createUnit({
+      building_id:            buildingId,
+      unit_number:            unitNumber,
+      floor_plan:             floorPlan   || undefined,
+      target_completion_date: targetDate  || undefined,
+      notes:                  notes       || undefined,
+    })
 
     if (result?.error) {
       setError(result.error)
@@ -65,10 +78,10 @@ export function CreateUnitDialog({ open, onOpenChange, buildings }: Props) {
         <DialogHeader>
           <DialogTitle>Add Unit</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
             <Label>Building</Label>
-            <Select value={buildingId} onValueChange={setBuildingId}>
+            <Select value={buildingId} onValueChange={(v) => { setBuildingId(v); setError(null) }}>
               <SelectTrigger>
                 <SelectValue placeholder="Select building..." />
               </SelectTrigger>
