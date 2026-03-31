@@ -1,12 +1,12 @@
 import { createClient } from '@/lib/supabase/server'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { UnitStatusBadge } from '@/components/units/StatusBadge'
 import { ProgressBar } from '@/components/units/ProgressBar'
-import { computeUnitProgress, formatDate, UNIT_STATUS_LABELS } from '@/lib/utils'
+import { computeUnitProgress, formatDate } from '@/lib/utils'
 import type { UnitStageWithTemplate, UnitWithBuilding } from '@/types/database'
 import {
-  Building2, CheckCircle2, CircleDot, AlertTriangle, Clock,
-  Truck, Activity, LayoutDashboard,
+  CheckCircle2, CircleDot, AlertTriangle, Clock,
+  Truck, Activity, LayoutDashboard, Package, HardHat,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -16,7 +16,6 @@ export default async function DashboardPage() {
   const [
     { data: units },
     { data: recentUpdates },
-    { data: buildings },
   ] = await Promise.all([
     supabase
       .from('units')
@@ -27,7 +26,6 @@ export default async function DashboardPage() {
       .select(`*, profiles(id, full_name), units(id, unit_number, buildings(name))`)
       .order('created_at', { ascending: false })
       .limit(8),
-    supabase.from('buildings').select('id, name').order('name'),
   ])
 
   const unitList = (units ?? []) as Array<
@@ -35,52 +33,57 @@ export default async function DashboardPage() {
   >
 
   // Summary stats
-  const readyToRent   = unitList.filter((u) => u.status === 'ready_to_rent').length
-  const inProgress    = unitList.filter((u) => u.status === 'in_progress').length
-  const onHold        = unitList.filter((u) => u.status === 'on_hold').length
-  const blocked       = unitList.filter((u) => u.status === 'blocked').length
-  const activeUnits   = unitList.filter((u) => !['complete','ready_to_rent'].includes(u.status)).length
+  const complete           = unitList.filter((u) => u.status === 'complete').length
+  const inProgress         = unitList.filter((u) => u.status === 'in_progress').length
+  const waitingMaterial    = unitList.filter((u) => u.status === 'waiting_material').length
+  const waitingContractor  = unitList.filter((u) => u.status === 'waiting_contractor').length
+  const blocked            = unitList.filter((u) => u.status === 'blocked').length
+  const onHold             = unitList.filter((u) => u.status === 'on_hold').length
+  const activeUnits        = unitList.filter((u) => !['complete', 'on_hold'].includes(u.status)).length
 
   const overdueStages = unitList.flatMap((u) =>
     (u.unit_stages ?? []).filter(
-      (s) => s.due_date && new Date(s.due_date) < new Date() && s.status !== 'done'
+      (s) => s.due_date && new Date(s.due_date) < new Date() && s.status !== 'complete'
     )
   ).length
 
   const deliveryRequired = unitList.flatMap((u) =>
     (u.unit_stages ?? []).filter(
-      (s) => s.delivery_required && ['pending','scheduled'].includes(s.delivery_status ?? '')
+      (s) => s.delivery_required && ['pending', 'scheduled'].includes(s.delivery_status ?? '')
     )
   ).length
 
   const stats = [
-    { label: 'Ready to Rent',      value: readyToRent,      icon: CheckCircle2,  color: 'text-emerald-600' },
-    { label: 'In Progress',        value: inProgress,       icon: CircleDot,     color: 'text-blue-600'   },
-    { label: 'On Hold',            value: onHold,           icon: Clock,         color: 'text-amber-600'  },
-    { label: 'Blocked',            value: blocked,          icon: AlertTriangle, color: 'text-red-600'    },
-    { label: 'Overdue Stages',     value: overdueStages,    icon: Clock,         color: 'text-red-500'    },
-    { label: 'Deliveries Needed',  value: deliveryRequired, icon: Truck,         color: 'text-amber-600'  },
-    { label: 'Active Units',       value: activeUnits,      icon: Activity,      color: 'text-slate-600'  },
+    { label: 'Active Units',          value: activeUnits,       icon: Activity,      color: 'text-slate-600'  },
+    { label: 'In Progress',           value: inProgress,        icon: CircleDot,     color: 'text-blue-600'   },
+    { label: 'Waiting Material',      value: waitingMaterial,   icon: Package,       color: 'text-amber-600'  },
+    { label: 'Waiting Contractor',    value: waitingContractor, icon: HardHat,       color: 'text-orange-600' },
+    { label: 'Blocked',               value: blocked,           icon: AlertTriangle, color: 'text-red-600'    },
+    { label: 'Complete',              value: complete,          icon: CheckCircle2,  color: 'text-emerald-600' },
+    { label: 'On Hold',               value: onHold,            icon: Clock,         color: 'text-slate-500'  },
+    { label: 'Overdue Stages',        value: overdueStages,     icon: Clock,         color: 'text-red-500'    },
+    { label: 'Pending Deliveries',    value: deliveryRequired,  icon: Truck,         color: 'text-amber-600'  },
   ]
 
-  // Units needing attention: blocked or overdue
+  // Units needing attention: blocked, waiting, or overdue stages
   const attentionUnits = unitList.filter((u) => {
-    const hasOverdue = (u.unit_stages ?? []).some(
-      (s) => s.due_date && new Date(s.due_date) < new Date() && s.status !== 'done'
+    if (['blocked', 'waiting_material', 'waiting_contractor'].includes(u.status)) return true
+    return (u.unit_stages ?? []).some(
+      (s) => s.due_date && new Date(s.due_date) < new Date() && s.status !== 'complete'
     )
-    return u.status === 'blocked' || hasOverdue
-  }).slice(0, 6)
+  }).slice(0, 8)
 
   // Per-building summary
-  const buildingMap = new Map<string, { name: string; total: number; done: number; blocked: number }>()
+  const buildingMap = new Map<string, { name: string; total: number; done: number; blocked: number; waiting: number }>()
   for (const unit of unitList) {
-    const bid = unit.building_id
+    const bid   = unit.building_id
     const bname = unit.buildings?.name ?? 'Unknown'
-    if (!buildingMap.has(bid)) buildingMap.set(bid, { name: bname, total: 0, done: 0, blocked: 0 })
+    if (!buildingMap.has(bid)) buildingMap.set(bid, { name: bname, total: 0, done: 0, blocked: 0, waiting: 0 })
     const b = buildingMap.get(bid)!
     b.total++
-    if (['ready_to_rent','complete'].includes(unit.status)) b.done++
-    if (unit.status === 'blocked') b.blocked++
+    if (unit.status === 'complete') b.done++
+    if (unit.status === 'blocked')  b.blocked++
+    if (['waiting_material', 'waiting_contractor'].includes(unit.status)) b.waiting++
   }
 
   return (
@@ -92,15 +95,15 @@ export default async function DashboardPage() {
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
+      <div className="grid grid-cols-3 gap-3 sm:grid-cols-5 lg:grid-cols-9">
         {stats.map(({ label, value, icon: Icon, color }) => (
           <Card key={label} className="shadow-none">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-xs text-muted-foreground leading-tight">{label}</p>
+            <CardContent className="p-3">
+              <div className="flex items-center justify-between mb-1.5">
                 <Icon className={`h-4 w-4 ${color}`} />
               </div>
               <p className="text-2xl font-bold tabular-nums">{value}</p>
+              <p className="text-xs text-muted-foreground leading-tight mt-0.5">{label}</p>
             </CardContent>
           </Card>
         ))}
@@ -125,7 +128,7 @@ export default async function DashboardPage() {
                     <Card className="shadow-none hover:shadow-sm transition-shadow cursor-pointer">
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between gap-3">
-                          <div className="min-w-0">
+                          <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
                               <span className="font-medium text-sm">Unit {unit.unit_number}</span>
                               <span className="text-xs text-muted-foreground">{unit.buildings?.name}</span>
@@ -166,9 +169,14 @@ export default async function DashboardPage() {
                           style={{ width: b.total > 0 ? `${Math.round((b.done / b.total) * 100)}%` : '0%' }}
                         />
                       </div>
-                      {b.blocked > 0 && (
-                        <p className="text-xs text-red-600 mt-1">{b.blocked} blocked</p>
-                      )}
+                      <div className="flex gap-3 mt-1">
+                        {b.blocked > 0 && (
+                          <p className="text-xs text-red-600">{b.blocked} blocked</p>
+                        )}
+                        {b.waiting > 0 && (
+                          <p className="text-xs text-amber-600">{b.waiting} waiting</p>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>

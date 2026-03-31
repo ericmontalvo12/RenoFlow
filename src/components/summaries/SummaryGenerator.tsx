@@ -37,7 +37,7 @@ export function SummaryGenerator({ buildings, contractors, unitStages }: Props) 
   // Contractor Summary logic
   // ============================================================
   const contractorSummaryText = useMemo(() => {
-    let stages = unitStages.filter((s: any) => s.status !== 'done')
+    let stages = unitStages.filter((s: any) => s.status !== 'complete')
 
     if (cBuilding !== 'all')   stages = stages.filter((s: any) => s.units?.building_id === cBuilding)
     if (cTrade    !== 'all')   stages = stages.filter((s: any) => s.stage_templates?.trade_type === cTrade)

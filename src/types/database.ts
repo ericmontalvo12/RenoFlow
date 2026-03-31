@@ -7,12 +7,20 @@ export type UserRole = 'admin' | 'manager' | 'staff'
 export type UnitStatus =
   | 'not_started'
   | 'in_progress'
-  | 'on_hold'
+  | 'waiting_material'
+  | 'waiting_contractor'
   | 'blocked'
-  | 'ready_to_rent'
   | 'complete'
+  | 'on_hold'
 
-export type StageStatus = 'not_started' | 'in_progress' | 'blocked' | 'done'
+export type StageStatus =
+  | 'not_started'
+  | 'ready'
+  | 'in_progress'
+  | 'waiting_material'
+  | 'waiting_contractor'
+  | 'complete'
+  | 'blocked'
 
 export type DeliveryStatus = 'not_needed' | 'pending' | 'scheduled' | 'delivered'
 

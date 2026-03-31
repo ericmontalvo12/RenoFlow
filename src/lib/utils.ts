@@ -18,19 +18,23 @@ export function cn(...inputs: ClassValue[]) {
 // ============================================================
 
 export const UNIT_STATUS_LABELS: Record<UnitStatus, string> = {
-  not_started:  'Not Started',
-  in_progress:  'In Progress',
-  on_hold:      'On Hold',
-  blocked:      'Blocked',
-  ready_to_rent:'Ready to Rent',
-  complete:     'Complete',
+  not_started:        'Not Started',
+  in_progress:        'In Progress',
+  waiting_material:   'Waiting on Material',
+  waiting_contractor: 'Waiting on Contractor',
+  blocked:            'Blocked',
+  complete:           'Complete',
+  on_hold:            'On Hold',
 }
 
 export const STAGE_STATUS_LABELS: Record<StageStatus, string> = {
-  not_started: 'Not Started',
-  in_progress: 'In Progress',
-  blocked:     'Blocked',
-  done:        'Done',
+  not_started:        'Not Started',
+  ready:              'Ready',
+  in_progress:        'In Progress',
+  waiting_material:   'Waiting on Material',
+  waiting_contractor: 'Waiting on Contractor',
+  complete:           'Complete',
+  blocked:            'Blocked',
 }
 
 export const DELIVERY_STATUS_LABELS: Record<DeliveryStatus, string> = {
@@ -59,24 +63,42 @@ export const TRADE_LABELS: Record<string, string> = {
 
 export function unitStatusVariant(status: UnitStatus) {
   const map: Record<UnitStatus, string> = {
-    not_started:  'bg-slate-100 text-slate-600',
-    in_progress:  'bg-blue-50 text-blue-700',
-    on_hold:      'bg-amber-50 text-amber-700',
-    blocked:      'bg-red-50 text-red-700',
-    ready_to_rent:'bg-emerald-50 text-emerald-700',
-    complete:     'bg-emerald-50 text-emerald-700',
+    not_started:        'bg-slate-100 text-slate-600',
+    in_progress:        'bg-blue-50 text-blue-700',
+    waiting_material:   'bg-amber-50 text-amber-700',
+    waiting_contractor: 'bg-orange-50 text-orange-700',
+    blocked:            'bg-red-50 text-red-700',
+    complete:           'bg-emerald-50 text-emerald-700',
+    on_hold:            'bg-slate-100 text-slate-500',
   }
   return map[status] ?? 'bg-slate-100 text-slate-600'
 }
 
 export function stageStatusVariant(status: StageStatus) {
   const map: Record<StageStatus, string> = {
-    not_started: 'bg-slate-100 text-slate-500',
-    in_progress: 'bg-blue-50 text-blue-700',
-    blocked:     'bg-red-50 text-red-700',
-    done:        'bg-emerald-50 text-emerald-700',
+    not_started:        'bg-slate-100 text-slate-500',
+    ready:              'bg-sky-50 text-sky-700',
+    in_progress:        'bg-blue-50 text-blue-700',
+    waiting_material:   'bg-amber-50 text-amber-700',
+    waiting_contractor: 'bg-orange-50 text-orange-700',
+    complete:           'bg-emerald-50 text-emerald-700',
+    blocked:            'bg-red-50 text-red-700',
   }
   return map[status] ?? 'bg-slate-100 text-slate-500'
+}
+
+// Dot color for stage row indicator
+export function stageDotColor(status: StageStatus) {
+  const map: Record<StageStatus, string> = {
+    not_started:        'bg-slate-300',
+    ready:              'bg-sky-400',
+    in_progress:        'bg-blue-500',
+    waiting_material:   'bg-amber-500',
+    waiting_contractor: 'bg-orange-500',
+    complete:           'bg-emerald-500',
+    blocked:            'bg-red-500',
+  }
+  return map[status] ?? 'bg-slate-300'
 }
 
 export function deliveryStatusVariant(status: DeliveryStatus | null) {
@@ -103,21 +125,21 @@ export function computeUnitProgress(stages: UnitStageWithTemplate[]): UnitProgre
     (a, b) => a.stage_templates.sort_order - b.stage_templates.sort_order
   )
 
-  const total = sorted.length
-  const completed = sorted.filter((s) => s.status === 'done').length
-  const percent = Math.round((completed / total) * 100)
+  const total     = sorted.length
+  const completed = sorted.filter((s) => s.status === 'complete').length
+  const percent   = Math.round((completed / total) * 100)
   const isBlocked = sorted.some((s) => s.status === 'blocked')
 
-  const activeStageRow = sorted.find((s) => s.status !== 'done')
+  const activeStageRow = sorted.find((s) => s.status !== 'complete')
   const activeStage: StageTemplate | null = activeStageRow
     ? {
-        id:                       activeStageRow.stage_templates.id,
-        name:                     activeStageRow.stage_templates.name,
-        trade_type:               activeStageRow.stage_templates.trade_type,
-        sort_order:               activeStageRow.stage_templates.sort_order,
-        is_active:                true,
+        id:                        activeStageRow.stage_templates.id,
+        name:                      activeStageRow.stage_templates.name,
+        trade_type:                activeStageRow.stage_templates.trade_type,
+        sort_order:                activeStageRow.stage_templates.sort_order,
+        is_active:                 true,
         default_delivery_required: false,
-        created_at:               '',
+        created_at:                '',
       }
     : null
 
@@ -132,8 +154,8 @@ export function formatDate(date: string | null | undefined): string {
   if (!date) return '—'
   return new Date(date).toLocaleDateString('en-US', {
     month: 'short',
-    day: 'numeric',
-    year: 'numeric',
+    day:   'numeric',
+    year:  'numeric',
   })
 }
 

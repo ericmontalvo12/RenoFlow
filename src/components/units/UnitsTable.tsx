@@ -22,7 +22,7 @@ interface Props {
 }
 
 const STAGE_STATUSES = ['not_started', 'in_progress', 'blocked', 'done'] as const
-const UNIT_STATUSES  = ['not_started', 'in_progress', 'on_hold', 'blocked', 'ready_to_rent', 'complete'] as const
+const UNIT_STATUSES  = ['not_started', 'in_progress', 'waiting_material', 'waiting_contractor', 'blocked', 'complete', 'on_hold'] as const
 const DELIVERY_STATUSES = ['pending', 'scheduled', 'delivered'] as const
 
 export function UnitsTable({ units, buildings, contractors, lockedBuildingId }: Props) {
@@ -47,7 +47,7 @@ export function UnitsTable({ units, buildings, contractors, lockedBuildingId }: 
 
     if (tradeFilter !== 'all') {
       const activeStage = (unit.unit_stages ?? [])
-        .filter((s) => s.status !== 'done')
+        .filter((s) => s.status !== 'complete')
         .sort((a, b) => a.stage_templates.sort_order - b.stage_templates.sort_order)[0]
       if (!activeStage || activeStage.stage_templates.trade_type !== tradeFilter) return false
     }
@@ -162,7 +162,7 @@ export function UnitsTable({ units, buildings, contractors, lockedBuildingId }: 
                   const stages   = unit.unit_stages ?? []
                   const progress = computeUnitProgress(stages)
                   const sorted   = [...stages].sort((a, b) => a.stage_templates.sort_order - b.stage_templates.sort_order)
-                  const active   = sorted.find((s) => s.status !== 'done')
+                  const active   = sorted.find((s) => s.status !== 'complete')
                   const contractor = active?.contractors ?? null
                   const pendingDelivery = stages.find(
                     (s) => s.delivery_required && ['pending','scheduled'].includes(s.delivery_status ?? '')
