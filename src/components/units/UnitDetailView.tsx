@@ -58,10 +58,13 @@ export function UnitDetailView({ unit, contractors, stageTemplates }: Props) {
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6">
       {/* Back nav */}
-      <Link href="/units" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+      <button
+        onClick={() => window.history.back()}
+        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+      >
         <ArrowLeft className="h-4 w-4" />
-        All Units
-      </Link>
+        Back
+      </button>
 
       {/* Unit header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">

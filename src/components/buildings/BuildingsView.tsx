@@ -104,7 +104,7 @@ export function BuildingsView({ buildings }: Props) {
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
                     <Link
-                      href={`/units?building=${b.id}`}
+                      href={`/buildings/${b.id}`}
                       className="font-medium text-sm hover:text-primary transition-colors block truncate"
                     >
                       {b.name}

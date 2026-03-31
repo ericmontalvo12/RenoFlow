@@ -3,7 +3,6 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard,
-  Building2,
   Warehouse,
   Users,
   FileText,
@@ -16,7 +15,6 @@ import { useRouter } from 'next/navigation'
 
 const navItems = [
   { href: '/dashboard',   label: 'Dashboard',  icon: LayoutDashboard },
-  { href: '/units',       label: 'Units',       icon: Building2 },
   { href: '/buildings',   label: 'Buildings',   icon: Warehouse },
   { href: '/contractors', label: 'Contractors', icon: Users },
   { href: '/summaries',   label: 'Summaries',   icon: FileText },

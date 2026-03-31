@@ -15,16 +15,17 @@ import { cn } from '@/lib/utils'
 type UnitRow = UnitWithBuilding & { unit_stages: UnitStageWithTemplate[] }
 
 interface Props {
-  units:       UnitRow[]
-  buildings:   Pick<Building, 'id' | 'name'>[]
-  contractors: Pick<Contractor, 'id' | 'company_name' | 'trade_type'>[]
+  units:             UnitRow[]
+  buildings:         Pick<Building, 'id' | 'name'>[]
+  contractors:       Pick<Contractor, 'id' | 'company_name' | 'trade_type'>[]
+  lockedBuildingId?: string   // when set, hides building filter/column
 }
 
 const STAGE_STATUSES = ['not_started', 'in_progress', 'blocked', 'done'] as const
 const UNIT_STATUSES  = ['not_started', 'in_progress', 'on_hold', 'blocked', 'ready_to_rent', 'complete'] as const
 const DELIVERY_STATUSES = ['pending', 'scheduled', 'delivered'] as const
 
-export function UnitsTable({ units, buildings, contractors }: Props) {
+export function UnitsTable({ units, buildings, contractors, lockedBuildingId }: Props) {
   const [search,           setSearch]           = useState('')
   const [buildingFilter,   setBuildingFilter]   = useState('all')
   const [statusFilter,     setStatusFilter]     = useState('all')
@@ -72,17 +73,19 @@ export function UnitsTable({ units, buildings, contractors }: Props) {
           />
         </div>
 
-        <Select value={buildingFilter} onValueChange={setBuildingFilter}>
-          <SelectTrigger className="w-[160px]">
-            <SelectValue placeholder="All Buildings" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Buildings</SelectItem>
-            {buildings.map((b) => (
-              <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {!lockedBuildingId && (
+          <Select value={buildingFilter} onValueChange={setBuildingFilter}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder="All Buildings" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Buildings</SelectItem>
+              {buildings.map((b) => (
+                <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
 
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-[140px]">
@@ -135,7 +138,9 @@ export function UnitsTable({ units, buildings, contractors }: Props) {
             <thead>
               <tr className="border-b bg-muted/40">
                 <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Unit</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Building</th>
+                {!lockedBuildingId && (
+                  <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Building</th>
+                )}
                 <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground hidden sm:table-cell">Floor Plan</th>
                 <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Status</th>
                 <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground hidden md:table-cell">Progress</th>
@@ -174,9 +179,11 @@ export function UnitsTable({ units, buildings, contractors }: Props) {
                           {unit.unit_number}
                         </Link>
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground">
-                        {unit.buildings?.name ?? '—'}
-                      </td>
+                      {!lockedBuildingId && (
+                        <td className="px-4 py-3 text-muted-foreground">
+                          {unit.buildings?.name ?? '—'}
+                        </td>
+                      )}
                       <td className="px-4 py-3 text-muted-foreground hidden sm:table-cell">
                         {unit.floor_plan ?? '—'}
                       </td>
