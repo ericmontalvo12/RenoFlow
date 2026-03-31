@@ -135,7 +135,7 @@ export function UnitDetailView({ unit, contractors, stageTemplates }: Props) {
         <h2 className="text-sm font-semibold mb-2">Stages</h2>
         {stages.map((stage) => (
           <StageRow
-            key={stage.id}
+            key={`${stage.id}-${stage.updated_at}`}
             stage={stage}
             contractors={contractors}
             expanded={expandedStage === stage.id}
