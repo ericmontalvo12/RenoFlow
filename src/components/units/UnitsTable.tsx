@@ -233,6 +233,7 @@ export function UnitsTable({ units, buildings, contractors, lockedBuildingId }: 
         open={createOpen}
         onOpenChange={setCreateOpen}
         buildings={buildings}
+        defaultBuildingId={lockedBuildingId}
       />
     </div>
   )

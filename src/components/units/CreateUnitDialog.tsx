@@ -1,5 +1,5 @@
 'use client'
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createUnit } from '@/actions/units'
 import type { Building } from '@/types/database'
@@ -12,55 +12,42 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 interface Props {
-  open:         boolean
-  onOpenChange: (open: boolean) => void
-  buildings:    Pick<Building, 'id' | 'name'>[]
+  open:             boolean
+  onOpenChange:     (open: boolean) => void
+  buildings:        Pick<Building, 'id' | 'name'>[]
+  defaultBuildingId?: string
 }
 
-export function CreateUnitDialog({ open, onOpenChange, buildings }: Props) {
+export function CreateUnitDialog({ open, onOpenChange, buildings, defaultBuildingId }: Props) {
   const router = useRouter()
-  const formRef = useRef<HTMLFormElement>(null)
-
   const [error,      setError]      = useState<string | null>(null)
   const [loading,    setLoading]    = useState(false)
-  const [buildingId, setBuildingId] = useState('')
+  const [buildingId, setBuildingId] = useState(defaultBuildingId ?? '')
+
+  // Sync if defaultBuildingId changes (e.g. navigating between buildings)
+  if (defaultBuildingId && buildingId !== defaultBuildingId && buildingId === '') {
+    setBuildingId(defaultBuildingId)
+  }
 
   function handleClose() {
     onOpenChange(false)
-    setBuildingId('')
+    setBuildingId(defaultBuildingId ?? '')
     setError(null)
-    formRef.current?.reset()
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-
     if (!buildingId) {
       setError('Please select a building.')
       return
     }
-
-    const form = e.currentTarget
-    const unitNumber  = (form.elements.namedItem('unit_number')  as HTMLInputElement).value.trim()
-    const floorPlan   = (form.elements.namedItem('floor_plan')   as HTMLInputElement).value.trim()
-    const targetDate  = (form.elements.namedItem('target_completion_date') as HTMLInputElement).value
-    const notes       = (form.elements.namedItem('notes') as HTMLInputElement | null)?.value.trim()
-
-    if (!unitNumber) {
-      setError('Unit number is required.')
-      return
-    }
-
     setLoading(true)
     setError(null)
 
-    const result = await createUnit({
-      building_id:            buildingId,
-      unit_number:            unitNumber,
-      floor_plan:             floorPlan   || undefined,
-      target_completion_date: targetDate  || undefined,
-      notes:                  notes       || undefined,
-    })
+    // Collect the native FormData — building_id comes from the hidden input
+    const formData = new FormData(e.currentTarget)
+
+    const result = await createUnit(formData)
 
     if (result?.error) {
       setError(result.error)
@@ -78,20 +65,30 @@ export function CreateUnitDialog({ open, onOpenChange, buildings }: Props) {
         <DialogHeader>
           <DialogTitle>Add Unit</DialogTitle>
         </DialogHeader>
-        <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label>Building</Label>
-            <Select value={buildingId} onValueChange={(v) => { setBuildingId(v); setError(null) }}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select building..." />
-              </SelectTrigger>
-              <SelectContent>
-                {buildings.map((b) => (
-                  <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/*
+            Hidden input carries buildingId into FormData reliably.
+            Radix Select updates React state; state syncs to this input.
+          */}
+          <input type="hidden" name="building_id" value={buildingId} />
+
+          {/* Only show building selector when not locked to a single building */}
+          {!defaultBuildingId && (
+            <div className="space-y-1.5">
+              <Label>Building</Label>
+              <Select value={buildingId} onValueChange={(v) => { setBuildingId(v); setError(null) }}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select building..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {buildings.map((b) => (
+                    <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <div className="space-y-1.5">
             <Label htmlFor="unit_number">Unit Number</Label>
             <Input id="unit_number" name="unit_number" placeholder="e.g. 204" required />
